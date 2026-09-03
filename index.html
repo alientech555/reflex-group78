@@ -770,3 +770,276 @@ function sendPasswordReset(){
     result.innerHTML=`<div class="bg-success-50 border border-success-200 rounded-lg p-3"><p class="text-sm font-semibold text-success-800 mb-1">✓ Reset code sent!</p><p class="text-xs text-success-700">Check your email (${email}) for the 6-digit code. Demo code: <span class="font-mono font-bold">${resetCode}</span></p></div>`;
     showToast('Password reset code sent','mail');
 }
+
+    
+function openRiderOnboarding(userId){
+    pendingOnboardingUserId=userId;
+    const user=state.users.find(u=>u.id===userId);
+    document.getElementById('onboarding-title').textContent='Rider Registration';
+    document.getElementById('onboarding-subtitle').textContent='Complete your profile';
+    const rejectionNotice=document.getElementById('rejection-notice');
+    if(user && user.status==='rejected' && user.rejectionReason){
+        rejectionNotice.classList.remove('hidden');
+        document.getElementById('rejection-notice-text').textContent=user.rejectionReason;
+        document.getElementById('onboarding-title').textContent='Amend & Resubmit';
+        document.getElementById('onboarding-subtitle').textContent='Fix the issues and resubmit';
+        // Pre-fill existing data
+        if(user.vehicle) document.getElementById('rider-vehicle-type').value=user.vehicle;
+        if(user.vehicleModel) document.getElementById('rider-vehicle-model').value=user.vehicleModel;
+        if(user.vehicleReg) document.getElementById('rider-vehicle-reg').value=user.vehicleReg;
+        if(user.vehicleYear) document.getElementById('rider-vehicle-year').value=user.vehicleYear;
+        if(user.insuranceProvider) document.getElementById('rider-insurance-provider').value=user.insuranceProvider;
+        if(user.insurancePolicy) document.getElementById('rider-insurance-policy').value=user.insurancePolicy;
+        if(user.insuranceExpiry) document.getElementById('rider-insurance-expiry').value=user.insuranceExpiry;
+        if(user.insuranceCoverage) document.getElementById('rider-insurance-coverage').value=user.insuranceCoverage;
+    } else {
+        rejectionNotice.classList.add('hidden');
+    }
+    document.getElementById('rider-onboarding-modal').classList.remove('hidden');
+    uploadedFiles={dl:null,insurance:null,vehicle:null};
+    lucide.createIcons();
+}
+function closeRiderOnboarding(){document.getElementById('rider-onboarding-modal').classList.add('hidden');pendingOnboardingUserId=null;}
+
+function handleFileUpload(input,previewId){
+    const file=input.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=(e)=>{document.getElementById(previewId).innerHTML=`<img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg mb-2"><p class="text-xs text-success-600 font-medium">✓ ${file.name}</p>`;input.closest('.upload-zone').classList.add('has-file');if(previewId==='dl-preview')uploadedFiles.dl=e.target.result;if(previewId==='insurance-preview')uploadedFiles.insurance=e.target.result;if(previewId==='vehicle-preview')uploadedFiles.vehicle=e.target.result;};
+    reader.readAsDataURL(file);
+}
+
+function submitRiderOnboarding(e){
+    e.preventDefault();
+    if(!uploadedFiles.dl||!uploadedFiles.insurance||!uploadedFiles.vehicle){showToast('Upload all documents','alert-circle');return;}
+    const user=state.users.find(u=>u.id===pendingOnboardingUserId);
+    if(user){user.vehicle=document.getElementById('rider-vehicle-type').value;user.vehicleModel=document.getElementById('rider-vehicle-model').value;user.vehicleReg=document.getElementById('rider-vehicle-reg').value;user.vehicleYear=document.getElementById('rider-vehicle-year').value;user.insuranceProvider=document.getElementById('rider-insurance-provider').value;user.insurancePolicy=document.getElementById('rider-insurance-policy').value;user.insuranceExpiry=document.getElementById('rider-insurance-expiry').value;user.insuranceCoverage=document.getElementById('rider-insurance-coverage').value;user.documents={...uploadedFiles};user.status='pending_review';delete user.rejectionReason;delete user.rejectedAt;saveState();}
+    closeRiderOnboarding(); refreshApprovalBadge(); if(currentUser&&currentUser.role==='dispatcher')renderApprovalsList();
+    if(!currentUser || currentUser.role!=='rider'){currentUser=null;localStorage.removeItem(STORAGE_KEYS.currentUser);showAuthView();}
+    showToast('Application submitted! Waiting for approval.','check-circle');
+}
+
+function switchDispatcherTab(tab){
+    currentDispatcherTab=tab;
+    document.querySelectorAll('.dispatcher-tab').forEach(t=>{const a=t.dataset.dispatcherTab===tab;t.classList.toggle('bg-brand-600',a);t.classList.toggle('text-white',a);t.classList.toggle('text-slate-600',!a);});
+    ['fleet','approvals','approved','rejected','returns'].forEach(t=>{const el=document.getElementById(`dispatcher-${t}-tab`);if(el)el.classList.toggle('hidden',t!==tab);});
+    if(tab==='fleet')setTimeout(()=>{if(dispatcherMap)dispatcherMap.invalidateSize();updateMapMarkers();},100);
+    if(tab==='approvals')renderApprovalsList();
+    if(tab==='approved')renderApprovedRiders();
+    if(tab==='rejected')renderRejectedRiders();
+    if(tab==='returns')renderDispatchReturns();
+}
+
+function switchRetailerTab(tab){
+    currentRetailerSubTab=tab;
+    document.querySelectorAll('.retailer-subtab').forEach(t=>{const a=t.dataset.retailerTab===tab;t.classList.toggle('bg-brand-600',a);t.classList.toggle('text-white',a);t.classList.toggle('text-slate-600',!a);});
+    ['orders','returns','inventory'].forEach(t=>{const el=document.getElementById(`retailer-${t}-tab`);if(el)el.classList.toggle('hidden',t!==tab);});
+    if(tab==='returns')renderRetailerReturns();
+    if(tab==='inventory')renderInventory();
+}
+
+function refreshApprovalBadge(){
+    const pending=state.users.filter(u=>u.role==='rider'&&u.status==='pending_review');
+    const badge=document.getElementById('approval-badge');
+    if(badge){badge.textContent=pending.length;badge.classList.toggle('hidden',pending.length===0);}
+    const pc=document.getElementById('dispatch-pending-count');if(pc)pc.textContent=state.orders.filter(o=>o.status==='pending').length;
+    const rc=document.getElementById('dispatch-rider-count');if(rc)rc.textContent=state.riders.length;
+    const pendingReturns=state.claims.filter(c=>c.status==='pending').length;
+    const drb=document.getElementById('dispatch-returns-badge');if(drb){drb.textContent=pendingReturns;drb.classList.toggle('hidden',pendingReturns===0);}
+    const rb=document.getElementById('returns-badge');if(rb){rb.textContent=pendingReturns;rb.classList.toggle('hidden',pendingReturns===0);}
+}
+
+function renderApprovalsList(){
+    const pending=state.users.filter(u=>u.role==='rider'&&u.status==='pending_review');
+    const list=document.getElementById('approvals-list'),empty=document.getElementById('approvals-empty');
+    refreshApprovalBadge();
+    if(pending.length===0){list.innerHTML='';empty.classList.remove('hidden');return;}
+    empty.classList.add('hidden');
+    list.innerHTML=pending.map(user=>`<div class="px-5 py-4 flex items-center gap-4 hover:bg-slate-50"><div class="w-12 h-12 bg-gradient-to-br from-accent-100 to-orange-100 rounded-full flex items-center justify-center shrink-0 border-2 border-accent-200"><i data-lucide="user" class="w-6 h-6 text-accent-600"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">${user.name}</p><p class="text-xs text-slate-500">${user.vehicle?user.vehicle.charAt(0).toUpperCase()+user.vehicle.slice(1):'Vehicle pending'} • ${user.phone}</p><div class="flex items-center gap-2 mt-1"><span class="badge badge-pending"><i data-lucide="clock" class="w-3 h-3"></i> Awaiting review</span></div></div><button onclick="openApprovalReview('${user.id}')" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-bold hover:bg-brand-700 flex items-center gap-1.5"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Review</button></div>`).join('');
+    lucide.createIcons();
+}
+
+function renderApprovedRiders(){
+    const approved=state.users.filter(u=>u.role==='rider'&&u.status==='approved');
+    const list=document.getElementById('approved-list'),empty=document.getElementById('approved-empty');
+    if(approved.length===0){list.innerHTML='';empty.classList.remove('hidden');return;}
+    empty.classList.add('hidden');
+    list.innerHTML=approved.map(user=>{const rider=state.riders.find(r=>r.userId===user.id);return `<div class="px-5 py-4 flex items-center gap-4 hover:bg-slate-50"><div class="w-12 h-12 bg-gradient-to-br from-success-100 to-emerald-100 rounded-full flex items-center justify-center shrink-0 border-2 border-success-200"><i data-lucide="user-check" class="w-6 h-6 text-success-600"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">${user.name}</p><p class="text-xs text-slate-500">${user.vehicle?user.vehicle.charAt(0).toUpperCase()+user.vehicle.slice(1):'-'} • ${user.phone}</p><div class="flex items-center gap-2 mt-1"><span class="badge badge-approved"><i data-lucide="check-circle" class="w-3 h-3"></i> Approved</span>${rider?`<span class="text-[10px] text-slate-400">Fleet ID: ${rider.id}</span>`:''}</div></div></div>`;}).join('');
+    lucide.createIcons();
+}
+
+function renderRejectedRiders(){
+    const rejected=state.users.filter(u=>u.role==='rider'&&u.status==='rejected');
+    const list=document.getElementById('rejected-list'),empty=document.getElementById('rejected-empty');
+    if(rejected.length===0){list.innerHTML='';empty.classList.remove('hidden');return;}
+    empty.classList.add('hidden');
+    list.innerHTML=rejected.map(user=>`<div class="px-5 py-4 flex items-start gap-4 hover:bg-slate-50"><div class="w-12 h-12 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center shrink-0 border-2 border-red-200"><i data-lucide="user-x" class="w-6 h-6 text-red-600"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">${user.name}</p><p class="text-xs text-slate-500">${user.vehicle?user.vehicle.charAt(0).toUpperCase()+user.vehicle.slice(1):'-'} • ${user.phone} • ${user.email}</p><div class="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg"><p class="text-[10px] text-red-600 font-semibold uppercase mb-0.5">Rejection Reason</p><p class="text-xs text-red-800">${user.rejectionReason||'No reason provided'}</p></div><p class="text-[10px] text-slate-400 mt-1">Rejected ${user.rejectedAt?new Date(user.rejectedAt).toLocaleDateString('en-KE'):'-'}</p></div></div>`).join('');
+    lucide.createIcons();
+}
+
+function renderDispatchReturns(){
+    const pending=state.claims.filter(c=>c.status==='pending');
+    const list=document.getElementById('dispatch-returns-list'),empty=document.getElementById('dispatch-returns-empty');
+    refreshApprovalBadge();
+    if(pending.length===0){list.innerHTML='';empty.classList.remove('hidden');return;}
+    empty.classList.add('hidden');
+    list.innerHTML=pending.map(c=>{const order=state.orders.find(o=>o.id===c.orderId);return `<div class="px-5 py-4 flex items-start gap-4 hover:bg-slate-50"><div class="w-12 h-12 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center shrink-0 border-2 border-pink-200"><i data-lucide="rotate-ccw" class="w-6 h-6 text-pink-600"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-bold text-slate-900">${c.orderId} • ${c.action==='refund'?'Refund':'Repurchase'}</p><p class="text-xs text-slate-500">Customer: ${order?order.customer:'-'} • ${order?order.phone:''}</p><p class="text-xs text-slate-500">Reason: ${c.reason}${c.otherReason?' - '+c.otherReason:''}</p><p class="text-xs text-pink-600 font-semibold mt-1">Collection: ${c.returnDate}</p><div class="flex items-center gap-2 mt-1"><span class="badge badge-claim">Pending approval</span></div></div><button onclick="approveReturnClaim('${c.id}')" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-bold hover:bg-brand-700 flex items-center gap-1.5"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Approve Collection</button></div>`;}).join('');
+    lucide.createIcons();
+}
+
+function openApprovalReview(userId){
+    const user=state.users.find(u=>u.id===userId); if(!user) return;
+    document.getElementById('approval-modal-subtitle').textContent=user.name;
+    document.getElementById('approval-modal-body').innerHTML=`<div class="space-y-4">
+        <div class="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-brand-600"></i> Personal Info</h4><div class="grid grid-cols-2 gap-3 text-sm"><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Name</p><p class="font-semibold">${user.name}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Phone</p><p class="font-semibold">${user.phone}</p></div><div class="col-span-2"><p class="text-[10px] text-slate-500 uppercase font-semibold">Email</p><p class="font-semibold">${user.email}</p></div></div></div>
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="bike" class="w-4 h-4 text-blue-600"></i> Vehicle</h4><div class="grid grid-cols-2 gap-3 text-sm"><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Type</p><p class="font-semibold capitalize">${user.vehicle||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Model</p><p class="font-semibold">${user.vehicleModel||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Reg</p><p class="font-semibold">${user.vehicleReg||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Year</p><p class="font-semibold">${user.vehicleYear||'-'}</p></div></div></div>
+        <div class="bg-gradient-to-r from-success-50 to-emerald-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-success-600"></i> Insurance</h4><div class="grid grid-cols-2 gap-3 text-sm"><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Provider</p><p class="font-semibold">${user.insuranceProvider||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Policy</p><p class="font-semibold">${user.insurancePolicy||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Expiry</p><p class="font-semibold">${user.insuranceExpiry||'-'}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Coverage</p><p class="font-semibold capitalize">${user.insuranceCoverage||'-'}</p></div></div></div>
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="file-image" class="w-4 h-4 text-purple-600"></i> Documents</h4><div class="grid grid-cols-3 gap-3">${user.documents?.dl?`<div><img src="${user.documents.dl}" class="w-full h-20 object-cover rounded-lg border border-slate-200"><p class="text-[10px] text-center text-slate-500 mt-1 font-medium">DL ✓</p></div>`:'<div class="text-center text-xs text-red-400 py-8">DL missing</div>'}${user.documents?.insurance?`<div><img src="${user.documents.insurance}" class="w-full h-20 object-cover rounded-lg border border-slate-200"><p class="text-[10px] text-center text-slate-500 mt-1 font-medium">Insurance ✓</p></div>`:'<div class="text-center text-xs text-red-400 py-8">Insurance missing</div>'}${user.documents?.vehicle?`<div><img src="${user.documents.vehicle}" class="w-full h-20 object-cover rounded-lg border border-slate-200"><p class="text-[10px] text-center text-slate-500 mt-1 font-medium">Vehicle ✓</p></div>`:'<div class="text-center text-xs text-red-400 py-8">Vehicle missing</div>'}</div></div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2"><i data-lucide="mail" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0"></i><p class="text-xs text-blue-800">Email from <span class="font-semibold">${SENDER_EMAIL}</span> to <span class="font-semibold">${user.email}</span></p></div>
+        <div class="flex gap-3 pt-2"><button onclick="openRejectionModal('${user.id}')" class="flex-1 px-4 py-3 border-2 border-red-200 text-red-700 rounded-xl hover:bg-red-50 font-bold text-sm flex items-center justify-center gap-2"><i data-lucide="x-circle" class="w-4 h-4"></i> Reject</button><button onclick="approveRider('${user.id}')" class="flex-1 px-4 py-3 bg-success-600 text-white rounded-xl hover:bg-success-700 font-bold text-sm shadow-lg flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Approve</button></div>
+    </div>`;
+    document.getElementById('approval-modal').classList.remove('hidden'); lucide.createIcons();
+}
+
+function approveRider(userId){
+    const user=state.users.find(u=>u.id===userId); if(!user) return;
+    user.status='approved';
+    const newRider={id:`R-${Date.now()}`,userId:user.id,name:user.name,phone:user.phone,status:'available',lat:-1.2864+(Math.random()-0.5)*0.02,lng:36.8172+(Math.random()-0.5)*0.02,deliveries:0,rating:5.0,earnings:0,vehicle:user.vehicle?user.vehicle.charAt(0).toUpperCase()+user.vehicle.slice(1):'Motorcycle'};
+    state.riders.push(newRider);
+    sendEmail(user.email,user.name,`🎉 Your Reflex Rider Account Has Been Approved!\n\nHabari ${user.name.split(' ')[0]},\n\nCongratulations! Your application to join the Reflex rider fleet has been APPROVED.\n\nYou can now log in to your rider account and start accepting delivery requests.\n\nAccount Details:\n• Name: ${user.name}\n• Vehicle: ${newRider.vehicle} (${user.vehicleModel||'N/A'})\n• Reg: ${user.vehicleReg||'N/A'}\n\nNext Steps:\n1. Log in at reflex.co.ke with your credentials\n2. Complete your profile setup\n3. Start accepting deliveries\n\nWelcome to the Reflex family!\n\n— ${SENDER_NAME}\n${SENDER_EMAIL}\nNairobi, Kenya`,'approval');
+    saveState(); closeApprovalModal(); renderApprovalsList(); renderRiderPanel(); updateMapMarkers(); refreshApprovalBadge();
+    showToast(`✓ ${user.name} approved! Email sent.`,'check-circle');
+}
+
+function openRejectionModal(userId){pendingRejectionUserId=userId;const user=state.users.find(u=>u.id===userId);document.getElementById('rejection-email-preview').textContent=user.email;document.getElementById('rejection-reason').value='';closeApprovalModal();document.getElementById('rejection-modal').classList.remove('hidden');setTimeout(()=>document.getElementById('rejection-reason').focus(),200);lucide.createIcons();}
+function closeRejectionModal(){document.getElementById('rejection-modal').classList.add('hidden');pendingRejectionUserId=null;}
+
+function confirmRejection(){
+    const reason=document.getElementById('rejection-reason').value.trim();
+    if(!reason){showToast('Please provide a rejection reason','alert-circle');return;}
+    if(!pendingRejectionUserId) return;
+    const user=state.users.find(u=>u.id===pendingRejectionUserId); if(!user) return;
+    user.status='rejected'; user.rejectionReason=reason; user.rejectedAt=Date.now();
+    sendEmail(user.email,user.name,`⚠️ Update on Your Reflex Rider Application\n\nHabari ${user.name.split(' ')[0]},\n\nThank you for your interest in joining the Reflex rider fleet. After careful review, we regret to inform you that we are unable to approve your account at this time.\n\nReason for rejection:\n━━━━━━━━━━━━━━━━━━━━━━\n"${reason}"\n━━━━━━━━━━━━━━━━━━━━━━\n\nWhat you can do:\n• Address the issue(s) mentioned above\n• Log in and resubmit your application with updated documents\n• Contact our support team for clarification\n\nWe appreciate your interest and hope to welcome you to the Reflex family in the future.\n\n— ${SENDER_NAME}\n${SENDER_EMAIL}\nNairobi, Kenya`,'rejection');
+    saveState(); closeRejectionModal(); renderApprovalsList(); refreshApprovalBadge();
+    showToast(`Rejection email sent to ${user.name}`,'mail');
+}
+function closeApprovalModal(){document.getElementById('approval-modal').classList.add('hidden');}
+
+function switchPersona(persona){
+    currentPersona=persona;
+    document.querySelectorAll('.persona-view').forEach(v=>v.classList.add('hidden'));
+    document.getElementById(`view-${persona}`).classList.remove('hidden');
+    if(persona==='retailer'){renderRetailerStats();renderOrdersTable();renderInventory();}
+    if(persona==='dispatcher'){renderDispatchQueue();renderRiderPanel();refreshApprovalBadge();setTimeout(()=>initDispatcherMap(),100);}
+    if(persona==='rider'){initRiderApp();renderCurrentRiderTab();}
+    if(persona==='buyer'){renderProducts();renderBuyerLocation();renderBuyerOrders();}
+    renderNav();
+}
+
+function toggleNetwork(){isOnline=!isOnline;const icon=document.getElementById('network-icon'),label=document.getElementById('network-label'),toggle=document.getElementById('network-toggle');if(isOnline){icon.className='status-dot online';label.textContent='Online';toggle.className='flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-success-300 bg-success-50 text-success-700';}else{icon.className='status-dot offline';label.textContent='Offline';toggle.className='flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 bg-red-50 text-red-700';}}
+
+function renderRetailerStats(){
+    const draft=state.orders.filter(o=>o.status==='draft').length;
+    const pending=state.orders.filter(o=>o.status==='pending').length;
+    const transit=state.orders.filter(o=>o.status==='picked_up'||o.status==='assigned').length;
+    const delivered=state.orders.filter(o=>o.status==='delivered').length;
+    const returns=state.claims.filter(c=>c.status!=='resolved').length;
+    const revenue=state.orders.filter(o=>o.status==='delivered').reduce((s,o)=>s+(o.value||0),0);
+    document.getElementById('stat-draft').textContent=draft;
+    document.getElementById('stat-pending').textContent=pending;
+    document.getElementById('stat-transit').textContent=transit;
+    document.getElementById('stat-delivered').textContent=delivered;
+    document.getElementById('stat-returns').textContent=returns;
+    document.getElementById('stat-revenue').textContent=revenue.toLocaleString();
+    document.getElementById('count-all').textContent=state.orders.length;
+    document.getElementById('count-draft').textContent=draft;
+    document.getElementById('count-pending').textContent=pending;
+    document.getElementById('count-assigned').textContent=state.orders.filter(o=>o.status==='assigned').length;
+    document.getElementById('count-picked_up').textContent=state.orders.filter(o=>o.status==='picked_up').length;
+    document.getElementById('count-delivered').textContent=delivered;
+    const h=new Date().getHours(),g=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+    const w=document.getElementById('retailer-welcome'); if(w&&currentUser) w.textContent=`${g}, ${currentUser.name}`;
+    refreshApprovalBadge();
+}
+
+function filterOrders(status){currentRetailerFilter=status;document.querySelectorAll('.filter-tab').forEach(t=>{const a=t.dataset.filter===status;t.classList.toggle('active',a);t.classList.toggle('text-slate-600',!a);});renderOrdersTable();}
+
+function getStatusBadge(s){const st={draft:'badge-draft',pending:'badge-pending',assigned:'badge-assigned',picked_up:'badge-transit',delivered:'badge-delivered',rejected:'badge-rejected'};const lb={draft:'Draft',pending:'Pending',assigned:'Assigned',picked_up:'In Transit',delivered:'Delivered',rejected:'Rejected'};const ic={draft:'file-text',pending:'clock',assigned:'user-check',picked_up:'truck',delivered:'check-circle',rejected:'x-circle'};return `<span class="badge ${st[s]||'badge-draft'}"><i data-lucide="${ic[s]||'file-text'}" class="w-3 h-3"></i> ${lb[s]||s}</span>`;}
+
+function renderOrdersTable(){
+    const tbody=document.getElementById('orders-table-body');
+    const filtered=currentRetailerFilter==='all'?state.orders:state.orders.filter(o=>o.status===currentRetailerFilter);
+    if(filtered.length===0){tbody.innerHTML=`<tr><td colspan="6" class="px-5 py-12 text-center"><i data-lucide="inbox" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i><p class="text-sm text-slate-500">No orders</p></td></tr>`;lucide.createIcons();return;}
+    tbody.innerHTML=filtered.map(o=>{const itemCount=o.items?o.items.length:1;const itemSummary=o.items?o.items.map(i=>`${i.name} ×${i.qty}`).join(', '):'-';return `<tr class="order-row cursor-pointer" onclick="openOrderDetail('${o.id}')"><td class="px-4 py-3"><span class="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded">${o.id}</span></td><td class="px-4 py-3"><p class="text-sm font-semibold text-slate-900 truncate max-w-[200px]">${itemSummary}</p><p class="text-[10px] text-slate-500">${itemCount} item${itemCount>1?'s':''} • KES ${(o.value||0).toLocaleString()}</p></td><td class="px-4 py-3 hidden md:table-cell"><p class="text-sm font-semibold">${o.customer}</p><p class="text-xs text-slate-500">${o.phone}</p></td><td class="px-4 py-3">${getStatusBadge(o.status)}</td><td class="px-4 py-3 hidden sm:table-cell text-sm text-slate-600">${o.rider||'<span class="text-slate-400 italic">Unassigned</span>'}</td><td class="px-4 py-3 text-right" onclick="event.stopPropagation()"><button onclick="showQR('${o.id}')" class="inline-flex items-center gap-1 text-brand-600 text-xs font-semibold"><i data-lucide="qr-code" class="w-4 h-4"></i> QR</button></td></tr>`;}).join('');
+    lucide.createIcons();
+}
+
+function openOrderDetail(orderId){
+    const o=state.orders.find(x=>x.id===orderId); if(!o) return;
+    document.getElementById('order-detail-id').textContent=o.id;
+    const itemsHtml=(o.items||[]).map(i=>`<div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"><div><p class="text-sm font-semibold text-slate-900">${i.name}</p><p class="text-xs text-slate-500">Qty: ${i.qty} × KES ${(i.unitPrice||0).toLocaleString()}</p></div><p class="text-sm font-bold text-slate-900">KES ${((i.qty||0)*(i.unitPrice||0)).toLocaleString()}</p></div>`).join('');
+    document.getElementById('order-detail-body').innerHTML=`<div class="space-y-4"><div class="flex items-center justify-between"><div>${getStatusBadge(o.status)}</div><span class="text-xs text-slate-500">${o.time||'-'}</span></div><div class="bg-slate-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="package" class="w-4 h-4 text-brand-600"></i> Order Items</h4>${itemsHtml}<div class="flex items-center justify-between pt-3 mt-3 border-t border-slate-200"><span class="text-sm font-bold text-slate-900">Total</span><span class="text-lg font-bold text-brand-600">KES ${(o.value||0).toLocaleString()}</span></div></div><div class="bg-blue-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-blue-600"></i> Customer</h4><div class="grid grid-cols-2 gap-3 text-sm"><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Name</p><p class="font-semibold">${o.customer}</p></div><div><p class="text-[10px] text-slate-500 uppercase font-semibold">Phone</p><p class="font-semibold">${o.phone}</p></div>${o.email?`<div class="col-span-2"><p class="text-[10px] text-slate-500 uppercase font-semibold">Email</p><p class="font-semibold">${o.email}</p></div>`:''}</div></div><div class="bg-success-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-success-600"></i> Delivery Address</h4><p class="text-sm font-semibold text-slate-900">${o.address}</p>${o.landmark?`<p class="text-xs text-slate-500 mt-1">Landmark: ${o.landmark}</p>`:''}</div><div class="bg-purple-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2"><i data-lucide="banknote" class="w-4 h-4 text-purple-600"></i> Payment</h4><p class="text-sm font-semibold capitalize">${o.payment||'mpesa'} • Total: KES ${(o.value||0).toLocaleString()}</p></div>${o.rider?`<div class="bg-amber-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2"><i data-lucide="bike" class="w-4 h-4 text-amber-600"></i> Assigned Rider</h4><p class="text-sm font-semibold">${o.rider}</p></div>`:''}${o.podCode?`<div class="bg-brand-50 rounded-xl p-4"><h4 class="font-bold text-slate-900 text-sm mb-2">POD Code</h4><p class="font-mono text-lg font-bold text-brand-700 tracking-widest">${o.podCode}</p></div>`:''}${o.status==='draft'?`<div class="flex gap-3 pt-2"><button onclick="closeOrderDetail()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="confirmOrder('${o.id}')" class="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-xl hover:bg-success-700 font-bold text-sm flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Confirm & Submit</button></div>`:''}${o.status==='pending'?`<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center"><p class="text-xs text-amber-800 font-semibold">Awaiting dispatcher assignment</p></div>`:''}</div>`;
+    document.getElementById('order-detail-modal').classList.remove('hidden'); lucide.createIcons();
+}
+function closeOrderDetail(){document.getElementById('order-detail-modal').classList.add('hidden');}
+
+function confirmOrder(orderId){const o=state.orders.find(x=>x.id===orderId);if(!o||o.status!=='draft')return;if(!o.items||o.items.length===0){showToast('Add at least one item','alert-circle');return;}o.status='pending';o.confirmedAt=Date.now();saveState();closeOrderDetail();renderRetailerStats();renderOrdersTable();renderDispatchQueue();showToast(`✓ Order ${o.id} confirmed & sent to dispatcher`,'check-circle');}
+
+function addOrderItemRow(){
+    const container=document.getElementById('order-items-container');
+    const rowId=`item-row-${Date.now()}-${Math.random().toString(36).substr(2,5)}`;
+    const row=document.createElement('div');
+    row.className='bg-white rounded-lg p-2 border border-slate-200 claim-reason-row';
+    row.id=rowId;
+    row.innerHTML=`<div class="flex items-center gap-2"><select class="item-product flex-1 px-2 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-brand-500 outline-none" onchange="updateOrderItemRow('${rowId}')"><option value="">Select product</option>${state.products.map(p=>`<option value="${p.id}" data-price="${p.price}" data-name="${p.name}" ${p.stock<=0?'disabled':''}>${p.name} (Stock: ${p.stock})</option>`).join('')}</select><input type="number" class="item-qty w-16 px-2 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-brand-500 outline-none" value="1" min="1" onchange="updateOrderItemRow('${rowId}')" oninput="updateOrderItemRow('${rowId}')"><button type="button" onclick="removeOrderItemRow('${rowId}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div><p class="item-stock-warning text-[10px] text-red-600 mt-1 hidden"></p>`;
+    container.appendChild(row);
+    orderItemRows.push(rowId);
+    lucide.createIcons();
+}
+
+function removeOrderItemRow(rowId){
+    const row=document.getElementById(rowId);
+    if(row) row.remove();
+    orderItemRows=orderItemRows.filter(id=>id!==rowId);
+    updateOrderTotal();
+}
+
+function updateOrderItemRow(rowId){
+    const row=document.getElementById(rowId);
+    if(!row) return;
+    const productSelect=row.querySelector('.item-product');
+    const qtyInput=row.querySelector('.item-qty');
+    const warning=row.querySelector('.item-stock-warning');
+    const product=state.products.find(p=>p.id===productSelect.value);
+    if(product){
+        const qty=parseInt(qtyInput.value)||1;
+        if(qty>product.stock){warning.textContent=`Only ${product.stock} in stock`;warning.classList.remove('hidden');qtyInput.classList.add('border-red-500');}
+        else{warning.classList.add('hidden');qtyInput.classList.remove('border-red-500');}
+    }
+    updateOrderTotal();
+}
+
+function updateOrderTotal(){
+    let total=0;
+    orderItemRows.forEach(rowId=>{
+        const row=document.getElementById(rowId);
+        if(!row) return;
+        const productSelect=row.querySelector('.item-product');
+        const qtyInput=row.querySelector('.item-qty');
+        const product=state.products.find(p=>p.id===productSelect.value);
+        if(product){total+=(parseInt(qtyInput.value)||0)*product.price;}
+    });
+    const td=document.getElementById('new-total-display');if(td)td.textContent='KES '+total.toLocaleString();
+}
+
+function openNewOrderModal(){
+    document.getElementById('new-order-modal').classList.remove('hidden');
+    document.getElementById('order-items-container').innerHTML='';
+    orderItemRows=[];
+    addOrderItemRow();
+    updateOrderTotal();
+    lucide.createIcons();
+}
+function closeNewOrderModal(){document.getElementById('new-order-modal').classList.add('hidden');}
+
+
