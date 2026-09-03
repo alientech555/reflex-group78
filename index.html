@@ -514,3 +514,259 @@
         <div class="p-5 space-y-4"><div class="bg-success-50 border border-success-200 rounded-xl p-3"><p class="text-[10px] font-semibold text-success-800 uppercase mb-1">Saved Address</p><p id="saved-address-display" class="text-sm text-success-900"></p></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Current Delivery Location (Optional)</label><input id="current-location-input" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><button onclick="useCurrentGPS()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"><i data-lucide="navigation" class="w-4 h-4"></i> Use GPS</button><div class="flex gap-3"><button onclick="closeLocationModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="saveCurrentLocation()" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 font-semibold text-sm">Confirm</button></div></div>
     </div>
 </div>
+</div>
+
+<!-- POD MODAL -->
+<div id="pod-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm animate-slide-up sm:animate-scale-in overflow-hidden p-5 text-center">
+        <h3 class="font-bold text-slate-900 mb-2">Delivery Confirmation</h3><p class="text-sm text-slate-600 mb-4">Enter POD code sent to customer</p>
+        <input id="pod-code-input" type="text" maxlength="6" class="w-full px-4 py-3 border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-center text-2xl font-mono font-bold tracking-widest uppercase" placeholder="------">
+        <p class="text-[10px] text-slate-400 mt-2">Demo: check order details for code</p>
+        <div class="flex gap-3 mt-5"><button onclick="closePodModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="verifyPodCode()" class="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-xl hover:bg-success-700 font-semibold text-sm">Verify</button></div>
+    </div>
+</div>
+
+<!-- QR MODAL -->
+<div id="qr-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeQRModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm animate-slide-up sm:animate-scale-in overflow-hidden text-center p-5">
+        <button onclick="closeQRModal()" class="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
+        <h3 class="font-bold text-slate-900 mb-1">Package QR</h3><p class="text-xs text-slate-500 mb-4" id="qr-order-label">ORD-XXXX</p>
+        <div id="qr-code-container" class="mx-auto w-44 h-44 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 mb-4"></div>
+        <div class="mt-3 p-2 bg-slate-50 rounded-lg"><p class="text-[10px] text-slate-400 uppercase font-semibold">Fallback Code</p><p class="font-mono text-sm font-bold text-slate-700" id="qr-fallback-code">A7K2M9</p></div>
+        <button onclick="closeQRModal()" class="mt-4 w-full py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm">Done</button>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto z-[100] hidden">
+    <div class="bg-slate-900 text-white px-4 sm:px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-up"><i id="toast-icon" data-lucide="check-circle" class="w-5 h-5 text-success-400 shrink-0"></i><p id="toast-message" class="text-sm font-medium"></p></div>
+</div>
+
+<script>
+const SENDER_EMAIL = 'derickkamau4@gmail.com';
+const SENDER_NAME = 'Reflex Logistics';
+const STORAGE_KEYS = { users:'reflex_users_v8', orders:'reflex_orders_v8', riders:'reflex_riders_v8', products:'reflex_products_v8', emails:'reflex_emails_v8', claims:'reflex_claims_v8', currentUser:'reflex_current_user_v8', buyerCart:'reflex_buyer_cart_v8', buyerLocation:'reflex_buyer_location_v8' };
+
+const DEFAULT_USERS = [
+    { id:'U-001', email:'retailer@demo.com', password:'demo123', role:'retailer', name:'Nairobi General Store', phone:'0700 000 001', status:'approved' },
+    { id:'U-002', email:'dispatch@demo.com', password:'demo123', role:'dispatcher', name:'Dispatch Control', phone:'0700 000 002', status:'approved' },
+    { id:'U-003', email:'rider@demo.com', password:'demo123', role:'rider', name:'Kevin Mutua', phone:'0711 111 111', status:'approved', vehicle:'motorcycle', vehicleModel:'Boxer 150', vehicleReg:'KMFL 123A' },
+    { id:'U-004', email:'buyer@demo.com', password:'demo123', role:'buyer', name:'Jane Wanjiku', phone:'0712 345 678', savedAddress:'Westlands, Mpaka Rd', status:'approved', successfulPurchases: 6 },
+];
+
+const DEFAULT_RIDERS = [
+    { id:'R-01', userId:'U-003', name:'Kevin Mutua', phone:'0711 111 111', status:'available', lat:-1.2815, lng:36.8175, deliveries:12, rating:4.9, earnings:4200, vehicle:'Motorcycle' },
+    { id:'R-02', userId:null, name:'Brian O.', phone:'0722 222 222', status:'delivering', lat:-1.2690, lng:36.8110, deliveries:8, rating:4.7, earnings:2800, vehicle:'Motorcycle' },
+    { id:'R-03', userId:null, name:'Grace N.', phone:'0733 333 333', status:'en_route', lat:-1.2920, lng:36.8220, deliveries:15, rating:4.8, earnings:5100, vehicle:'Bicycle' },
+    { id:'R-04', userId:null, name:'Joseph K.', phone:'0744 444 444', status:'available', lat:-1.3050, lng:36.7980, deliveries:6, rating:4.6, earnings:1950, vehicle:'Motorcycle' },
+];
+
+const DEFAULT_PRODUCTS = [
+    { id:'P-001', name:'Fresh Maize Flour', price:180, category:'Groceries', image:'🌽', stock:50 },
+    { id:'P-002', name:'Cooking Oil 2L', price:450, category:'Groceries', image:'🫒', stock:30 },
+    { id:'P-003', name:'Sugar 2kg', price:320, category:'Groceries', image:'🍬', stock:40 },
+    { id:'P-004', name:'Rice 5kg', price:850, category:'Groceries', image:'🍚', stock:25 },
+    { id:'P-005', name:'Milk 500ml', price:60, category:'Groceries', image:'🥛', stock:100 },
+    { id:'P-006', name:'Bread', price:65, category:'Groceries', image:'🍞', stock:60 },
+    { id:'P-007', name:'Phone Charger', price:350, category:'Electronics', image:'🔌', stock:15 },
+    { id:'P-008', name:'Earphones', price:500, category:'Electronics', image:'🎧', stock:20 },
+    { id:'P-009', name:'T-Shirt', price:800, category:'Clothing', image:'👕', stock:35 },
+];
+
+const DEFAULT_ORDERS = [
+    { id:'ORD-7829', items:[{productId:'P-001',name:'Fresh Maize Flour',qty:2,unitPrice:180}], customer:'Jane Wanjiku', phone:'0712 345 678', email:'jane@example.com', address:'Behind blue kiosk, Ngong Rd', status:'delivered', rider:'Kevin Mutua', riderId:'R-01', time:'10:30 AM', landmark:'Near the matatu stage', value:360, payment:'mpesa', createdAt:Date.now()-86400000*2, podCode:null },
+    { id:'ORD-7830', items:[{productId:'P-002',name:'Cooking Oil 2L',qty:1,unitPrice:450}], customer:'David Ochieng', phone:'0722 987 654', email:'david@example.com', address:'Westlands, Mpaka Rd', status:'delivered', rider:'Kevin Mutua', riderId:'R-01', time:'11:15 AM', landmark:'Behind the blue gate', value:450, payment:'mpesa', createdAt:Date.now()-86400000, podCode:'X7K2M9' },
+    { id:'ORD-7831', items:[{productId:'P-004',name:'Rice 5kg',qty:1,unitPrice:850}], customer:'Amina Hassan', phone:'0733 456 789', email:'amina@example.com', address:'Kilimani, Argwings Kodhek', status:'picked_up', rider:'Grace N.', riderId:'R-03', time:'11:45 AM', landmark:'Yellow building', value:850, payment:'card', createdAt:Date.now()-1800000, podCode:'P3N8Q1' },
+    { id:'ORD-7832', items:[{productId:'P-003',name:'Sugar 2kg',qty:3,unitPrice:320}], customer:'Peter Kamau', phone:'0744 567 890', email:'peter@example.com', address:'Karen, Langata Rd', status:'pending', rider:null, riderId:null, time:'12:00 PM', landmark:'White fence', value:960, payment:'mpesa', createdAt:Date.now()-1200000, podCode:null },
+];
+
+let state = { users:[], orders:[], riders:[], products:[], emails:[], claims:[] };
+let currentUser = null, currentAuthRole = 'retailer', currentAuthTab = 'login', currentPersona = 'retailer', currentRetailerFilter = 'all', currentRetailerSubTab = 'orders', currentRiderTab = 'home', currentRiderPeriod = 'month', currentDispatcherTab = 'fleet', isOnline = true;
+let dispatcherMap = null, riderMarkers = [], activeRiderOrder = null, activeReturnOrder = null;
+let riderState = { scanned:false, fallbackActive:false, photoTaken:false, signatureTaken:false };
+let buyerCart = [], buyerCurrentLocation = null, pendingPodOrder = null, pendingClaimOrderId = null;
+let uploadedFiles = { dl:null, insurance:null, vehicle:null }, pendingOnboardingUserId = null, pendingRejectionUserId = null;
+let orderItemRows = [];
+
+function saveState() {
+    try {
+        Object.entries({users:state.users,orders:state.orders,riders:state.riders,products:state.products,emails:state.emails,claims:state.claims}).forEach(([k,v])=>localStorage.setItem(STORAGE_KEYS[k],JSON.stringify(v)));
+        if(currentUser) localStorage.setItem(STORAGE_KEYS.currentUser,JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEYS.buyerCart,JSON.stringify(buyerCart));
+        localStorage.setItem(STORAGE_KEYS.buyerLocation,JSON.stringify(buyerCurrentLocation));
+    } catch(e){}
+}
+
+function loadState() {
+    try {
+        const get = (k,d) => { const v=localStorage.getItem(k); return v?JSON.parse(v):JSON.parse(JSON.stringify(d)); };
+        state.users=get(STORAGE_KEYS.users,DEFAULT_USERS); state.orders=get(STORAGE_KEYS.orders,DEFAULT_ORDERS);
+        state.riders=get(STORAGE_KEYS.riders,DEFAULT_RIDERS); state.products=get(STORAGE_KEYS.products,DEFAULT_PRODUCTS);
+        state.emails=get(STORAGE_KEYS.emails,[]); state.claims=get(STORAGE_KEYS.claims,[]);
+        currentUser=JSON.parse(localStorage.getItem(STORAGE_KEYS.currentUser));
+        buyerCart=JSON.parse(localStorage.getItem(STORAGE_KEYS.buyerCart))||[];
+        buyerCurrentLocation=JSON.parse(localStorage.getItem(STORAGE_KEYS.buyerLocation));
+        const kevin=state.riders.find(r=>r.id==='R-01'); if(kevin&&!kevin.userId) kevin.userId='U-003';
+    } catch(e) {
+        state.users=JSON.parse(JSON.stringify(DEFAULT_USERS)); state.orders=JSON.parse(JSON.stringify(DEFAULT_ORDERS));
+        state.riders=JSON.parse(JSON.stringify(DEFAULT_RIDERS)); state.products=JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+        state.emails=[]; state.claims=[];
+    }
+}
+
+function sendEmail(toEmail, toName, subject, body, type='info') {
+    const email = { id:`E-${Date.now()}-${Math.random().toString(36).substr(2,5)}`, from:SENDER_EMAIL, fromName:SENDER_NAME, to:toEmail, toName:toName, subject, body, type, read:false, timestamp:Date.now() };
+    state.emails.unshift(email); saveState(); updateEmailBadge();
+    if(currentUser && currentUser.email===toEmail) showToast('📧 New email received','mail');
+    return email;
+}
+
+function updateEmailBadge() {
+    if(!currentUser) return;
+    const btn=document.getElementById('email-inbox-btn'), badge=document.getElementById('email-badge');
+    if(!btn||!badge) return;
+    btn.classList.remove('hidden');
+    const unread=state.emails.filter(e=>e.to===currentUser.email&&!e.read).length;
+    if(unread>0){ badge.textContent=unread>9?'9+':unread; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
+}
+
+function openEmailInbox() {
+    if(!currentUser) return;
+    const my=state.emails.filter(e=>e.to===currentUser.email);
+    document.getElementById('email-inbox-subtitle').textContent=`${my.length} message${my.length!==1?'s':''} for ${currentUser.email}`;
+    const body=document.getElementById('email-inbox-body');
+    if(my.length===0){ body.innerHTML=`<div class="py-16 text-center"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="inbox" class="w-8 h-8 text-slate-400"></i></div><p class="text-sm font-semibold text-slate-700">No emails yet</p></div>`; }
+    else {
+        body.innerHTML=`<div class="divide-y divide-slate-100">${my.map(e=>{
+            const ic={approval:'check-circle',rejection:'x-circle',info:'info',pod:'key',order:'file-text',claim:'rotate-ccw',reset:'key'};
+            const cl={approval:'text-success-600 bg-success-100',rejection:'text-red-600 bg-red-100',info:'text-blue-600 bg-blue-100',pod:'text-accent-600 bg-accent-100',order:'text-brand-600 bg-brand-100',claim:'text-pink-600 bg-pink-100',reset:'text-purple-600 bg-purple-100'};
+            const dt=new Date(e.timestamp);
+            const ts=dt.toLocaleDateString('en-KE',{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'});
+            return `<button onclick="openEmailDetail('${e.id}')" class="email-item ${!e.read?'unread':''} w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-slate-50">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${cl[e.type]||cl.info}"><i data-lucide="${ic[e.type]||'mail'}" class="w-5 h-5"></i></div>
+                <div class="flex-1 min-w-0"><div class="flex items-center justify-between gap-2"><p class="text-sm ${!e.read?'font-bold':'font-semibold'} text-slate-900 truncate">${e.subject}</p><span class="text-[10px] text-slate-400 shrink-0">${ts}</span></div><p class="text-xs text-slate-600 mt-0.5 line-clamp-2">${e.body.substring(0,120)}...</p></div>
+                ${!e.read?'<span class="w-2 h-2 bg-brand-600 rounded-full shrink-0 mt-2"></span>':''}
+            </button>`;
+        }).join('')}</div>`;
+    }
+    state.emails.forEach(e=>{if(e.to===currentUser.email) e.read=true;}); saveState(); updateEmailBadge();
+    document.getElementById('email-inbox-modal').classList.remove('hidden'); lucide.createIcons();
+}
+function closeEmailInbox(){document.getElementById('email-inbox-modal').classList.add('hidden');}
+
+function openEmailDetail(emailId) {
+    const email=state.emails.find(e=>e.id===emailId); if(!email) return;
+    document.getElementById('email-detail-subject').textContent=email.subject;
+    document.getElementById('email-detail-meta').innerHTML=`From: ${email.fromName} &lt;${email.from}&gt; • To: ${email.to}`;
+    const tc={approval:'from-success-50 to-emerald-50 border-success-200',rejection:'from-red-50 to-rose-50 border-red-200',info:'from-blue-50 to-indigo-50 border-blue-200',pod:'from-accent-50 to-yellow-50 border-accent-200',order:'from-brand-50 to-purple-50 border-brand-200',claim:'from-pink-50 to-rose-50 border-pink-200',reset:'from-purple-50 to-fuchsia-50 border-purple-200'};
+    document.getElementById('email-detail-body').innerHTML=`<div class="bg-gradient-to-r ${tc[email.type]||tc.info} border rounded-xl p-4 mb-4"><div class="flex items-center gap-2 mb-2"><i data-lucide="${email.type==='approval'?'check-circle':email.type==='rejection'?'x-circle':email.type==='claim'?'rotate-ccw':email.type==='reset'?'key':'mail'}" class="w-5 h-5"></i><p class="text-xs font-semibold uppercase tracking-wider">${email.type} notification</p></div><p class="text-sm text-slate-800 leading-relaxed whitespace-pre-line">${email.body}</p></div><div class="text-[10px] text-slate-400 text-center">Received ${new Date(email.timestamp).toLocaleString('en-KE')}</div>`;
+    document.getElementById('email-detail-modal').classList.remove('hidden'); lucide.createIcons();
+}
+function closeEmailDetail(){document.getElementById('email-detail-modal').classList.add('hidden');}
+
+document.addEventListener('DOMContentLoaded',()=>{
+    loadState(); lucide.createIcons();
+    if(currentUser){switchPersona(currentUser.role);renderUserMenu();renderNav();updateEmailBadge();} else showAuthView();
+    renderProducts(); updateCartCount(); renderBuyerLocation(); renderBuyerOrders(); refreshApprovalBadge();
+});
+
+function showAuthView(){document.querySelectorAll('.persona-view').forEach(v=>v.classList.add('hidden'));document.getElementById('view-auth').classList.remove('hidden');document.getElementById('main-nav').innerHTML='';document.getElementById('mobile-nav').innerHTML='';document.getElementById('user-menu').innerHTML='';document.getElementById('email-inbox-btn').classList.add('hidden');lucide.createIcons();}
+
+function renderNav(){
+    if(!currentUser) return;
+    const personas=currentUser.role==='dispatcher'?['retailer','dispatcher']:[currentUser.role];
+    const iconMap={retailer:'store',dispatcher:'map-pinned',rider:'bike',buyer:'shopping-bag'};
+    document.getElementById('main-nav').innerHTML=personas.map(p=>`<button onclick="switchPersona('${p}')" class="persona-tab flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium ${currentPersona===p?'active':'text-slate-500 hover:text-brand-600'}"><i data-lucide="${iconMap[p]}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="capitalize">${p}</span></button>`).join('');
+    document.getElementById('mobile-nav').innerHTML=personas.map(p=>`<button onclick="switchPersona('${p}')" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium ${currentPersona===p?'text-brand-600 border-b-2 border-brand-600':'text-slate-500 border-b-2 border-transparent'}"><i data-lucide="${iconMap[p]}" class="w-3.5 h-3.5"></i><span class="capitalize">${p}</span></button>`).join('');
+    lucide.createIcons();
+}
+
+function renderUserMenu(){if(!currentUser) return;document.getElementById('user-menu').innerHTML=`<div class="hidden sm:flex items-center gap-2 text-xs text-slate-600"><span class="font-medium">${currentUser.name.split(' ')[0]}</span></div><button onclick="logout()" class="p-1.5 sm:p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout"><i data-lucide="log-out" class="w-4 h-4 sm:w-5 sm:h-5"></i></button>`;lucide.createIcons();}
+function logout(){currentUser=null;localStorage.removeItem(STORAGE_KEYS.currentUser);showAuthView();showToast('Logged out','log-out');}
+
+function openAuthModal(role){
+    currentAuthRole=role;
+    const rl={retailer:'Retailer',dispatcher:'Dispatcher',rider:'Rider',buyer:'Buyer'};
+    document.getElementById('auth-modal-title').textContent=`${rl[role]} Portal`;
+    document.getElementById('auth-modal').classList.remove('hidden');
+    const tc=document.getElementById('auth-tabs-container');
+    if(role==='retailer'||role==='dispatcher'){tc.innerHTML=`<div class="bg-accent-50 border border-accent-200 rounded-lg p-3 text-center"><p class="text-xs text-accent-800 font-semibold">Demo accounts only</p><p class="text-[10px] text-accent-600 mt-0.5">Use demo credentials from landing page</p></div>`;currentAuthTab='login';renderLoginForm();}
+    else{tc.innerHTML=`<div class="flex bg-slate-100 rounded-lg p-1"><button onclick="switchAuthTab('login')" id="auth-tab-login" class="auth-tab active flex-1 py-2 rounded-md text-sm font-semibold">Login</button><button onclick="switchAuthTab('signup')" id="auth-tab-signup" class="auth-tab flex-1 py-2 rounded-md text-sm font-semibold text-slate-600">Sign Up</button></div>`;currentAuthTab='login';renderLoginForm();}
+    lucide.createIcons();
+}
+function closeAuthModal(){document.getElementById('auth-modal').classList.add('hidden');}
+
+function switchAuthTab(tab){
+    currentAuthTab=tab;
+    const l=document.getElementById('auth-tab-login'),s=document.getElementById('auth-tab-signup');
+    if(!l||!s) return;
+    l.classList.toggle('active',tab==='login');s.classList.toggle('active',tab==='signup');
+    l.classList.toggle('text-slate-600',tab!=='login');s.classList.toggle('text-slate-600',tab!=='signup');
+    if(tab==='login') renderLoginForm(); else renderSignupForm();
+}
+
+function renderLoginForm(){
+    const demo=currentAuthRole==='rider'?'rider@demo.com':currentAuthRole==='buyer'?'buyer@demo.com':'';
+    document.getElementById('auth-modal-body').innerHTML=`<form onsubmit="handleLogin(event)" class="space-y-4"><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Email</label><input id="login-email" type="email" required value="${demo}" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label><input id="login-password" type="password" required value="demo123" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><button type="submit" class="w-full py-2.5 bg-brand-600 text-white rounded-lg font-semibold text-sm hover:bg-brand-700">Login</button><div class="text-center"><button type="button" onclick="openForgotPassword()" class="text-xs text-brand-600 hover:underline font-semibold">Forgot password?</button></div></form>`;
+}
+
+function renderSignupForm(){
+    document.getElementById('auth-modal-body').innerHTML=`<form onsubmit="handleSignup(event)" class="space-y-4"><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label><input id="signup-name" type="text" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="John Doe"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Email</label><input id="signup-email" type="email" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Phone</label><input id="signup-phone" type="tel" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="07XX XXX XXX"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label><input id="signup-password" type="password" required minlength="6" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div>${currentAuthRole==='buyer'?'<div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Saved Address</label><input id="signup-address" type="text" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Default delivery address"></div>':''}<button type="submit" class="w-full py-2.5 bg-brand-600 text-white rounded-lg font-semibold text-sm hover:bg-brand-700">Create Account</button></form>`;
+}
+
+function handleLogin(e){
+    e.preventDefault();
+    const email=document.getElementById('login-email').value.trim(), password=document.getElementById('login-password').value;
+    const user=state.users.find(u=>u.email===email&&u.password===password&&u.role===currentAuthRole);
+    if(!user){showToast('Invalid credentials','alert-circle');return;}
+    if(user.role==='rider'){
+        if(user.status==='pending'){showToast('Complete registration first','clock');closeAuthModal();setTimeout(()=>openRiderOnboarding(user.id),300);return;}
+        if(user.status==='pending_review'){showToast('Application under review','clock');return;}
+        if(user.status==='rejected'){
+            showToast('Viewing rejected application - amend & resubmit','alert-circle');
+            currentUser=user; saveState(); closeAuthModal();
+            switchPersona('rider'); renderUserMenu(); renderNav(); updateEmailBadge();
+            setTimeout(()=>openRiderOnboarding(user.id),300);
+            return;
+        }
+    }
+    currentUser=user; saveState(); closeAuthModal(); switchPersona(user.role); renderUserMenu(); renderNav(); updateEmailBadge();
+    showToast(`Welcome, ${user.name.split(' ')[0]}!`,'check-circle');
+}
+
+function handleSignup(e){
+    e.preventDefault();
+    const name=document.getElementById('signup-name').value.trim(),email=document.getElementById('signup-email').value.trim(),phone=document.getElementById('signup-phone').value.trim(),password=document.getElementById('signup-password').value;
+    if(state.users.find(u=>u.email===email)){showToast('Email already registered','alert-circle');return;}
+    const newUser={id:`U-${Date.now()}`,email,password,role:currentAuthRole,name,phone,createdAt:Date.now()};
+    if(currentAuthRole==='buyer'){newUser.savedAddress=document.getElementById('signup-address').value.trim();newUser.status='approved';newUser.successfulPurchases=0;}
+    if(currentAuthRole==='rider'){newUser.status='pending';newUser.documents={dl:null,insurance:null,vehicle:null};}
+    state.users.push(newUser); saveState(); closeAuthModal();
+    if(currentAuthRole==='rider'){pendingOnboardingUserId=newUser.id;currentUser=newUser;saveState();showToast('Account created! Complete registration.','check-circle');setTimeout(()=>openRiderOnboarding(newUser.id),500);}
+    else{currentUser=newUser;saveState();switchPersona(newUser.role);renderUserMenu();renderNav();updateEmailBadge();showToast(`Welcome, ${name.split(' ')[0]}!`,'check-circle');}
+}
+
+function openForgotPassword(){
+    document.getElementById('forgot-email').value='';
+    document.getElementById('forgot-result').classList.add('hidden');
+    document.getElementById('forgot-password-modal').classList.remove('hidden');
+    lucide.createIcons();
+}
+function closeForgotPassword(){document.getElementById('forgot-password-modal').classList.add('hidden');}
+
+function sendPasswordReset(){
+    const email=document.getElementById('forgot-email').value.trim();
+    if(!email){showToast('Enter your email','alert-circle');return;}
+    const user=state.users.find(u=>u.email===email);
+    if(!user){showToast('Email not found','alert-circle');return;}
+    const resetCode=Math.floor(100000+Math.random()*900000).toString();
+    user.resetCode=resetCode; user.resetExpiry=Date.now()+3600000;
+    saveState();
+    sendEmail(user.email,user.name,` Password Reset Code: ${resetCode}`,`Habari ${user.name.split(' ')[0]},\n\nWe received a request to reset your password.\n\nYour reset code is: ${resetCode}\n\nThis code expires in 1 hour.\n\nIf you didn't request this, please ignore this email.\n\n— ${SENDER_NAME}\n${SENDER_EMAIL}`,'reset');
+    const result=document.getElementById('forgot-result');
+    result.classList.remove('hidden');
+    result.innerHTML=`<div class="bg-success-50 border border-success-200 rounded-lg p-3"><p class="text-sm font-semibold text-success-800 mb-1">✓ Reset code sent!</p><p class="text-xs text-success-700">Check your email (${email}) for the 6-digit code. Demo code: <span class="font-mono font-bold">${resetCode}</span></p></div>`;
+    showToast('Password reset code sent','mail');
+}
