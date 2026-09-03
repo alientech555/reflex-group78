@@ -256,3 +256,261 @@
             </div>
         </div>
     </section>
+<!-- DISPATCHER CONSOLE -->
+    <section id="view-dispatcher" class="persona-view hidden">
+        <div class="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6">
+            <div class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 sm:p-6 mb-5 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div><p class="text-blue-200 text-xs font-semibold uppercase tracking-wider">Dispatch Control</p><h2 class="text-xl sm:text-2xl font-bold mt-1">Fleet Command Center</h2><p class="text-blue-200 text-sm mt-1">Manage riders, orders & returns.</p></div>
+                    <div class="flex gap-2 shrink-0"><div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2 text-center"><p class="text-2xl font-bold" id="dispatch-rider-count">0</p><p class="text-[10px] text-blue-200 uppercase">Riders</p></div><div class="bg-white/10 backdrop-blur rounded-xl px-4 py-2 text-center"><p class="text-2xl font-bold" id="dispatch-pending-count">0</p><p class="text-[10px] text-blue-200 uppercase">Orders</p></div></div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 mb-4 bg-white rounded-xl p-1 border border-slate-200 shadow-sm w-fit flex-wrap">
+                <button onclick="switchDispatcherTab('fleet')" data-dispatcher-tab="fleet" class="dispatcher-tab px-3 sm:px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all bg-brand-600 text-white"><span class="flex items-center gap-1.5"><i data-lucide="map" class="w-4 h-4"></i> Fleet Map</span></button>
+                <button onclick="switchDispatcherTab('approvals')" data-dispatcher-tab="approvals" class="dispatcher-tab px-3 sm:px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all text-slate-600 hover:bg-slate-50 relative"><span class="flex items-center gap-1.5"><i data-lucide="user-check" class="w-4 h-4"></i> Pending <span id="approval-badge" class="hidden bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">0</span></span></button>
+                <button onclick="switchDispatcherTab('approved')" data-dispatcher-tab="approved" class="dispatcher-tab px-3 sm:px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all text-slate-600 hover:bg-slate-50"><span class="flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> Approved</span></button>
+                <button onclick="switchDispatcherTab('rejected')" data-dispatcher-tab="rejected" class="dispatcher-tab px-3 sm:px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all text-slate-600 hover:bg-slate-50"><span class="flex items-center gap-1.5"><i data-lucide="user-x" class="w-4 h-4"></i> Rejected</span></button>
+                <button onclick="switchDispatcherTab('returns')" data-dispatcher-tab="returns" class="dispatcher-tab px-3 sm:px-4 py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all text-slate-600 hover:bg-slate-50 relative"><span class="flex items-center gap-1.5"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> Returns <span id="dispatch-returns-badge" class="hidden bg-pink-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">0</span></span></button>
+            </div>
+            <div id="dispatcher-fleet-tab" class="dispatcher-tab-content">
+                <div class="flex flex-col lg:flex-row gap-3 h-[calc(100vh-300px)] min-h-[400px]">
+                    <div class="w-full lg:w-80 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col shrink-0 max-h-[300px] lg:max-h-none"><div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between"><h3 class="font-bold text-slate-900 text-sm flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4 text-brand-600"></i> Confirmed Orders</h3><span id="queue-count" class="bg-brand-100 text-brand-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span></div><div id="dispatch-queue" class="flex-1 overflow-y-auto p-3 space-y-2"></div></div>
+                    <div class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[300px]"><div class="absolute top-3 left-3 z-[1000] glass rounded-lg px-3 py-2 shadow-lg"><h3 class="font-bold text-xs text-slate-800 flex items-center gap-1.5"><i data-lucide="map" class="w-3.5 h-3.5 text-brand-600"></i> Nairobi Fleet</h3></div><div id="dispatcher-map" class="w-full h-full"></div></div>
+                    <div class="w-full lg:w-72 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col shrink-0 max-h-[300px] lg:max-h-none"><div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between"><h3 class="font-bold text-slate-900 text-sm flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-brand-600"></i> Fleet</h3><span id="available-count" class="bg-success-100 text-success-700 text-xs font-bold px-2 py-0.5 rounded-full">0 free</span></div><div id="rider-panel" class="flex-1 overflow-y-auto p-3 space-y-2"></div></div>
+                </div>
+            </div>
+            <div id="dispatcher-approvals-tab" class="dispatcher-tab-content hidden">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-accent-50 to-orange-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-accent-600"></i> Pending Approvals</h3><p class="text-xs text-slate-500 mt-0.5">Review documents, approve or reject</p></div><div id="approvals-list" class="divide-y divide-slate-100"></div><div id="approvals-empty" class="hidden py-16 text-center"><div class="w-16 h-16 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="check-circle-2" class="w-8 h-8 text-success-500"></i></div><p class="text-sm font-semibold text-slate-700">All caught up!</p></div></div>
+            </div>
+            <div id="dispatcher-approved-tab" class="dispatcher-tab-content hidden">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-success-50 to-emerald-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-success-600"></i> Approved Riders</h3></div><div id="approved-list" class="divide-y divide-slate-100"></div><div id="approved-empty" class="hidden py-16 text-center"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="users" class="w-8 h-8 text-slate-400"></i></div><p class="text-sm font-semibold text-slate-700">No approved riders</p></div></div>
+            </div>
+            <div id="dispatcher-rejected-tab" class="dispatcher-tab-content hidden">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-rose-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="user-x" class="w-5 h-5 text-red-600"></i> Rejected Applications</h3></div><div id="rejected-list" class="divide-y divide-slate-100"></div><div id="rejected-empty" class="hidden py-16 text-center"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="user-x" class="w-8 h-8 text-slate-400"></i></div><p class="text-sm font-semibold text-slate-700">No rejections</p></div></div>
+            </div>
+            <div id="dispatcher-returns-tab" class="dispatcher-tab-content hidden">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-5 h-5 text-pink-600"></i> Return Claims</h3><p class="text-xs text-slate-500 mt-0.5">Approve for rider collection</p></div><div id="dispatch-returns-list" class="divide-y divide-slate-100"></div><div id="dispatch-returns-empty" class="hidden py-16 text-center"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="rotate-ccw" class="w-8 h-8 text-slate-400"></i></div><p class="text-sm font-semibold text-slate-700">No return claims</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RIDER APP -->
+    <section id="view-rider" class="persona-view hidden">
+        <div class="max-w-md mx-auto py-4 sm:py-6 px-3 sm:px-4">
+            <div class="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-2 shadow-2xl">
+                <div class="bg-slate-50 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden min-h-[650px] sm:min-h-[700px] relative">
+                    <div class="bg-slate-900 h-6 sm:h-7 flex items-center justify-center"><div class="w-20 sm:w-24 h-3 sm:h-4 bg-slate-800 rounded-full"></div></div>
+                    <div class="bg-gradient-to-br from-brand-700 to-brand-900 text-white px-4 sm:px-5 pt-3 sm:pt-4 pb-5 sm:pb-6">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-2"><div id="rider-avatar" class="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-sm border-2 border-white/30">KM</div><div><p class="text-[10px] sm:text-xs text-brand-200">Habari,</p><p id="rider-name-display" class="text-xs sm:text-sm font-bold">Kevin Mutua</p></div></div>
+                            <div id="rider-sync-status" class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-success-500/20 text-success-300 border border-success-500/30"><span class="w-1.5 h-1.5 bg-success-400 rounded-full animate-pulse"></span> Synced</div>
+                        </div>
+                        <div id="rider-header-content"></div>
+                    </div>
+                    <div id="rider-body" class="p-3 sm:p-4 pb-20 sm:pb-24 min-h-[400px]"></div>
+                    <div class="sticky bottom-2 sm:bottom-4 left-0 right-0 px-3 sm:px-4 z-40">
+                        <div class="bg-white border border-slate-200 shadow-xl rounded-xl sm:rounded-2xl px-1 sm:px-2 py-1.5 sm:py-2 flex justify-around">
+                            <button onclick="switchRiderTab('home')" data-rider-tab="home" class="rider-tab-btn active relative flex flex-col items-center gap-0.5 py-1.5 sm:py-2 px-3 sm:px-4"><i data-lucide="home" class="w-4 h-4 sm:w-5 sm:h-5"></i><span class="text-[9px] sm:text-[10px] font-semibold">Home</span><div class="tab-indicator"></div></button>
+                            <button onclick="switchRiderTab('queue')" data-rider-tab="queue" class="rider-tab-btn relative flex flex-col items-center gap-0.5 py-1.5 sm:py-2 px-3 sm:px-4 text-slate-400"><div class="relative"><i data-lucide="list" class="w-4 h-4 sm:w-5 sm:h-5"></i><span id="queue-badge" class="hidden absolute -top-1 -right-2 bg-brand-600 text-white text-[8px] font-bold px-1 rounded-full min-w-[12px] text-center">0</span></div><span class="text-[9px] sm:text-[10px] font-semibold">Queue</span><div class="tab-indicator"></div></button>
+                            <button onclick="switchRiderTab('returns')" data-rider-tab="returns" class="rider-tab-btn relative flex flex-col items-center gap-0.5 py-1.5 sm:py-2 px-3 sm:px-4 text-slate-400"><div class="relative"><i data-lucide="rotate-ccw" class="w-4 h-4 sm:w-5 sm:h-5"></i><span id="returns-queue-badge" class="hidden absolute -top-1 -right-2 bg-pink-500 text-white text-[8px] font-bold px-1 rounded-full min-w-[12px] text-center">0</span></div><span class="text-[9px] sm:text-[10px] font-semibold">Returns</span><div class="tab-indicator"></div></button>
+                            <button onclick="switchRiderTab('earnings')" data-rider-tab="earnings" class="rider-tab-btn relative flex flex-col items-center gap-0.5 py-1.5 sm:py-2 px-3 sm:px-4 text-slate-400"><i data-lucide="wallet" class="w-4 h-4 sm:w-5 sm:h-5"></i><span class="text-[9px] sm:text-[10px] font-semibold">Earn</span><div class="tab-indicator"></div></button>
+                            <button onclick="switchRiderTab('profile')" data-rider-tab="profile" class="rider-tab-btn relative flex flex-col items-center gap-0.5 py-1.5 sm:py-2 px-3 sm:px-4 text-slate-400"><i data-lucide="user" class="w-4 h-4 sm:w-5 sm:h-5"></i><span class="text-[9px] sm:text-[10px] font-semibold">Profile</span><div class="tab-indicator"></div></button>
+                        </div>
+                    </div>
+                    <div id="scanner-overlay" class="hidden fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+                        <div class="absolute top-6 left-6 right-6 flex justify-between items-center"><button onclick="closeScanner()" class="text-white p-2"><i data-lucide="x" class="w-6 h-6"></i></button><span class="text-white text-sm font-semibold">Scanning QR</span><div class="w-8"></div></div>
+                        <div class="w-56 h-56 sm:w-64 sm:h-64 border-2 border-white/30 rounded-2xl relative overflow-hidden"><div class="scan-line"></div><div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-brand-400 rounded-tl-lg"></div><div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-brand-400 rounded-tr-lg"></div><div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-brand-400 rounded-bl-lg"></div><div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-brand-400 rounded-br-lg"></div></div>
+                        <p class="text-white/70 text-sm mt-6">Align QR code within frame</p>
+                        <button onclick="simulateScanSuccess()" class="mt-6 bg-brand-600 text-white px-6 py-3 rounded-xl font-bold text-sm">Simulate Scan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BUYER PORTAL -->
+    <section id="view-buyer" class="persona-view hidden">
+        <div class="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-6">
+            <div class="bg-gradient-to-r from-accent-500 via-accent-600 to-pink-500 rounded-2xl p-5 sm:p-6 mb-5 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div><p class="text-accent-100 text-xs font-semibold uppercase tracking-wider">Marketplace</p><h2 class="text-xl sm:text-2xl font-bold mt-1">Shop Local</h2><p class="text-accent-100 text-sm mt-1">Fresh products from retailers near you.</p></div>
+                    <button onclick="openCartModal()" class="relative bg-white text-accent-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-accent-50 transition-colors shadow-lg flex items-center gap-2 shrink-0"><i data-lucide="shopping-cart" class="w-4 h-4"></i><span>Cart</span><span id="cart-count" class="bg-accent-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span></button>
+                </div>
+            </div>
+            <div class="grid lg:grid-cols-4 gap-4">
+                <div class="lg:col-span-3"><div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 gap-3"></div></div>
+                <div class="space-y-4">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4"><h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2 text-sm"><i data-lucide="map-pin" class="w-4 h-4 text-brand-600"></i> Delivery Location</h3><div id="buyer-location-info"></div><button onclick="openLocationModal()" class="mt-3 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-2"><i data-lucide="edit" class="w-3.5 h-3.5"></i> Update Location</button></div>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4"><h3 class="font-bold text-slate-900 mb-3 text-sm">My Orders</h3><div id="buyer-orders-list" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeAuthModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0"><div><h3 id="auth-modal-title" class="font-bold text-slate-900">Welcome</h3><p id="auth-modal-subtitle" class="text-xs text-slate-500 mt-0.5">Login or create account</p></div><button onclick="closeAuthModal()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="auth-tabs-container" class="px-5 sm:px-6 pt-4 shrink-0"></div>
+        <div id="auth-modal-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
+    </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div id="forgot-password-modal" class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeForgotPassword()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-scale-in overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-purple-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="key" class="w-5 h-5 text-brand-600"></i> Reset Password</h3><p class="text-xs text-slate-500 mt-0.5">Enter your email to receive reset instructions</p></div>
+        <div class="p-5 sm:p-6 space-y-4">
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label><input id="forgot-email" type="email" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="your@email.com"></div>
+            <div id="forgot-result" class="hidden"></div>
+            <div class="flex gap-3"><button onclick="closeForgotPassword()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="sendPasswordReset()" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 font-semibold text-sm">Send Reset Link</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- RIDER ONBOARDING -->
+<div id="rider-onboarding-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeRiderOnboarding()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl animate-slide-up sm:animate-scale-in overflow-hidden max-h-[92vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-success-50 to-emerald-50"><div><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="bike" class="w-5 h-5 text-success-600"></i> <span id="onboarding-title">Rider Registration</span></h3><p id="onboarding-subtitle" class="text-xs text-slate-500 mt-0.5">Complete your profile</p></div><button onclick="closeRiderOnboarding()" class="p-2 hover:bg-white/50 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <form onsubmit="submitRiderOnboarding(event)" class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+            <div id="rejection-notice" class="hidden bg-red-50 border border-red-200 rounded-xl p-4"><div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-5 h-5 text-red-600 mt-0.5 shrink-0"></i><div><p class="text-sm font-bold text-red-900 mb-1">Previous Application Rejected</p><p class="text-xs text-red-800 mb-2" id="rejection-notice-text"></p><p class="text-[10px] text-red-700 font-semibold">Please amend your details and resubmit.</p></div></div></div>
+            <div><h4 class="font-bold text-slate-900 mb-3 text-sm flex items-center gap-2"><span class="w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-bold">1</span> Vehicle</h4><div class="grid sm:grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-slate-700 mb-1">Type *</label><select id="rider-vehicle-type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><option value="">Select</option><option value="motorcycle">Motorcycle</option><option value="bicycle">Bicycle</option><option value="scooter">Scooter</option><option value="tuk-tuk">Tuk-Tuk</option></select></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Model *</label><input id="rider-vehicle-model" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Boxer 150"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Reg Number *</label><input id="rider-vehicle-reg" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="KMFL 123A"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Year *</label><input id="rider-vehicle-year" type="number" min="2000" max="2025" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="2022"></div></div></div>
+            <div><h4 class="font-bold text-slate-900 mb-3 text-sm flex items-center gap-2"><span class="w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-bold">2</span> Insurance</h4><div class="grid sm:grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-slate-700 mb-1">Provider *</label><input id="rider-insurance-provider" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Jubilee"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Policy *</label><input id="rider-insurance-policy" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="POL-123"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Expiry *</label><input id="rider-insurance-expiry" type="date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Coverage *</label><select id="rider-insurance-coverage" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><option value="">Select</option><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party</option><option value="third-party-fire">Third Party + Fire</option></select></div></div></div>
+            <div><h4 class="font-bold text-slate-900 mb-2 text-sm flex items-center gap-2"><span class="w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-bold">3</span> Documents</h4><div class="grid sm:grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Driving License *</label><div class="upload-zone" onclick="document.getElementById('upload-dl').click()"><input type="file" id="upload-dl" accept="image/*" class="hidden" onchange="handleFileUpload(this,'dl-preview')"><div id="dl-preview" class="text-center"><i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mx-auto mb-1"></i><p class="text-sm text-slate-600 font-medium">Upload</p></div></div></div><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Insurance Cert *</label><div class="upload-zone" onclick="document.getElementById('upload-insurance').click()"><input type="file" id="upload-insurance" accept="image/*" class="hidden" onchange="handleFileUpload(this,'insurance-preview')"><div id="insurance-preview" class="text-center"><i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mx-auto mb-1"></i><p class="text-sm text-slate-600 font-medium">Upload</p></div></div></div><div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-700 mb-1.5">Vehicle Photo *</label><div class="upload-zone" onclick="document.getElementById('upload-vehicle').click()"><input type="file" id="upload-vehicle" accept="image/*" class="hidden" onchange="handleFileUpload(this,'vehicle-preview')"><div id="vehicle-preview" class="text-center"><i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mx-auto mb-1"></i><p class="text-sm text-slate-600 font-medium">Upload vehicle photo</p></div></div></div></div></div>
+            <div class="flex gap-3 pt-2"><button type="button" onclick="closeRiderOnboarding()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button type="submit" class="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-xl hover:bg-success-700 font-semibold text-sm">Submit</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- APPROVAL REVIEW MODAL -->
+<div id="approval-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeApprovalModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0"><div><h3 class="font-bold text-slate-900">Review Application</h3><p class="text-xs text-slate-500 mt-0.5" id="approval-modal-subtitle"></p></div><button onclick="closeApprovalModal()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="approval-modal-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
+    </div>
+</div>
+
+<!-- REJECTION MODAL -->
+<div id="rejection-modal" class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg animate-slide-up sm:animate-scale-in overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-rose-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="alert-circle" class="w-5 h-5 text-red-600"></i> Reject Application</h3><p class="text-xs text-slate-500 mt-0.5">Reason will be emailed to rider</p></div>
+        <div class="p-5 sm:p-6 space-y-4"><div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Rejection Reason *</label><textarea id="rejection-reason" rows="4" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm resize-none" placeholder="e.g., Driving license appears blurred..."></textarea></div><div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2"><i data-lucide="mail" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0"></i><p class="text-xs text-blue-800">Email from <span class="font-semibold">derickkamau4@gmail.com</span> to <span id="rejection-email-preview" class="font-semibold"></span></p></div><div class="flex gap-3"><button onclick="closeRejectionModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="confirmRejection()" class="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-semibold text-sm">Send Rejection</button></div></div>
+    </div>
+</div>
+
+<!-- EMAIL INBOX -->
+<div id="email-inbox-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeEmailInbox()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl animate-slide-up sm:animate-scale-in overflow-hidden max-h-[85vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-brand-50 to-purple-50"><div><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="mail" class="w-5 h-5 text-brand-600"></i> Inbox</h3><p class="text-xs text-slate-500 mt-0.5" id="email-inbox-subtitle"></p></div><button onclick="closeEmailInbox()" class="p-2 hover:bg-white/50 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="email-inbox-body" class="flex-1 overflow-y-auto"></div>
+    </div>
+</div>
+
+<!-- EMAIL DETAIL -->
+<div id="email-detail-modal" class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeEmailDetail()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xl animate-slide-up sm:animate-scale-in overflow-hidden max-h-[85vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0"><div><h3 id="email-detail-subject" class="font-bold text-slate-900">Subject</h3><p id="email-detail-meta" class="text-xs text-slate-500 mt-0.5"></p></div><button onclick="closeEmailDetail()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="email-detail-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
+    </div>
+</div>
+
+<!-- ORDER DETAIL MODAL -->
+<div id="order-detail-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeOrderDetail()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0"><div><h3 class="font-bold text-slate-900">Order Details</h3><p class="text-xs text-slate-500 mt-0.5" id="order-detail-id"></p></div><button onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="order-detail-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
+    </div>
+</div>
+
+<!-- NEW ORDER MODAL -->
+<div id="new-order-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeNewOrderModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-gradient-to-r from-brand-50 to-purple-50"><div><h3 class="font-bold text-slate-900">Create New Order</h3><p class="text-xs text-slate-500 mt-0.5">Add items and submit directly</p></div><button onclick="closeNewOrderModal()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <form onsubmit="submitNewOrder(event)" class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3">
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <div class="flex items-center justify-between mb-2"><h4 class="font-bold text-sm text-slate-900 flex items-center gap-2"><i data-lucide="package" class="w-4 h-4 text-brand-600"></i> Order Items</h4><button type="button" onclick="addOrderItemRow()" class="text-xs text-brand-600 font-semibold flex items-center gap-1 hover:text-brand-700"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Item</button></div>
+                <div id="order-items-container" class="space-y-2"></div>
+            </div>
+            <div class="bg-brand-50 rounded-lg p-3 flex items-center justify-between border border-brand-200"><span class="text-sm font-semibold text-brand-900">Total Value</span><span id="new-total-display" class="text-lg font-bold text-brand-700">KES 0</span></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Customer Name *</label><input id="new-customer" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Jane Wanjiku"></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Customer Phone *</label><input id="new-phone" type="tel" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="07XX XXX XXX"></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Delivery Address *</label><input id="new-address" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Behind blue kiosk, Ngong Rd"></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Landmark</label><input id="new-landmark" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="Next to the mango tree"></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label><select id="new-payment" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><option value="mpesa">M-Pesa</option><option value="card">Card</option></select></div>
+            <div class="flex gap-3 pt-2"><button type="button" onclick="closeNewOrderModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button type="submit" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 font-semibold text-sm flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Confirm & Submit</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD ITEM MODAL -->
+<div id="add-item-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeAddItemModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-scale-in overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-purple-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="package-plus" class="w-5 h-5 text-brand-600"></i> Add New Item</h3><p class="text-xs text-slate-500 mt-0.5">Add product to inventory</p></div>
+        <form onsubmit="submitNewItem(event)" class="p-5 sm:p-6 space-y-3">
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Item Name *</label><input id="new-item-name" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Category *</label><select id="new-item-category" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><option value="Groceries">Groceries</option><option value="Electronics">Electronics</option><option value="Clothing">Clothing</option><option value="Other">Other</option></select></div>
+            <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold text-slate-700 mb-1">Price (KES) *</label><input id="new-item-price" type="number" min="0" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Stock *</label><input id="new-item-stock" type="number" min="0" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1">Emoji Icon</label><input id="new-item-emoji" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="📦"></div>
+            <div class="flex gap-3 pt-2"><button type="button" onclick="closeAddItemModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button type="submit" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 font-semibold text-sm">Add Item</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- CART MODAL -->
+<div id="cart-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeCartModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0"><div><h3 class="font-bold text-slate-900">Cart</h3><p class="text-xs text-slate-500 mt-0.5" id="cart-item-count">0 items</p></div><button onclick="closeCartModal()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div id="cart-body" class="flex-1 overflow-y-auto p-5"></div>
+        <div id="cart-footer" class="border-t border-slate-100 p-5 bg-slate-50 shrink-0"></div>
+    </div>
+</div>
+
+<!-- RETURN CLAIM MODAL -->
+<div id="return-claim-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeReturnClaimModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-5 h-5 text-pink-600"></i> Return / Refund Claim</h3><p class="text-xs text-slate-500 mt-0.5" id="return-claim-order-id"></p></div>
+        <div class="p-5 sm:p-6 space-y-4">
+            <div class="bg-pink-50 border border-pink-200 rounded-lg p-3 text-xs text-pink-800"><p class="font-semibold mb-1">Eligibility:</p><p>• Only delivered items are eligible</p><p>• Return date must be within 3 days of claim</p><p>• Goods will be collected and reviewed within 3 days</p></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Action Required *</label><div class="grid grid-cols-2 gap-2"><label class="flex items-center gap-2 p-3 border-2 border-slate-200 rounded-lg cursor-pointer has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"><input type="radio" name="claim-action" value="refund" checked class="sr-only"><i data-lucide="banknote" class="w-4 h-4 text-slate-600"></i><span class="text-sm font-semibold text-slate-700">Refund</span></label><label class="flex items-center gap-2 p-3 border-2 border-slate-200 rounded-lg cursor-pointer has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"><input type="radio" name="claim-action" value="repurchase" class="sr-only"><i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600"></i><span class="text-sm font-semibold text-slate-700">Repurchase</span></label></div></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Reason for Return *</label><select id="claim-reason" onchange="handleClaimReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><option value="">Select reason</option><option value="damaged">Item arrived damaged</option><option value="wrong-item">Wrong item delivered</option><option value="missing-items">Missing items</option><option value="defective">Defective / Not working</option><option value="expired">Expired product</option><option value="not-as-described">Not as described</option><option value="other">Other reason</option></select></div>
+            <div id="claim-other-reason-container" class="hidden"><label class="block text-xs font-semibold text-slate-700 mb-1.5">Please specify *</label><textarea id="claim-other-reason" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none" placeholder="Describe the issue..."></textarea></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Additional Notes</label><textarea id="claim-notes" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm resize-none" placeholder="Any additional details..."></textarea></div>
+            <div><label class="block text-xs font-semibold text-slate-700 mb-1.5">Preferred Return Collection Date *</label><input id="claim-return-date" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"><p class="text-[10px] text-slate-500 mt-1">Must be within 3 days of today</p></div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2"><i data-lucide="info" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0"></i><p class="text-xs text-blue-800">Upon submission, your goods will be collected and the return will be reviewed & initiated within 3 days.</p></div>
+            <div class="flex gap-3 pt-2"><button onclick="closeReturnClaimModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="submitReturnClaim()" class="flex-1 px-4 py-2.5 bg-pink-600 text-white rounded-xl hover:bg-pink-700 font-semibold text-sm">Submit Claim</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- RETURN VERIFICATION MODAL (Retailer) -->
+<div id="return-verify-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeReturnVerifyModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg animate-slide-up sm:animate-scale-in overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50"><h3 class="font-bold text-slate-900 flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5 text-pink-600"></i> Verify Returned Goods</h3><p class="text-xs text-slate-500 mt-0.5" id="return-verify-claim-id"></p></div>
+        <div id="return-verify-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
+    </div>
+</div>
+
+<!-- LOCATION MODAL -->
+<div id="location-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeLocationModal()"></div>
+    <div class="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-scale-in overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between"><div><h3 class="font-bold text-slate-900">Delivery Location</h3><p class="text-xs text-slate-500 mt-0.5">Won't change saved address</p></div><button onclick="closeLocationModal()" class="p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div>
+        <div class="p-5 space-y-4"><div class="bg-success-50 border border-success-200 rounded-xl p-3"><p class="text-[10px] font-semibold text-success-800 uppercase mb-1">Saved Address</p><p id="saved-address-display" class="text-sm text-success-900"></p></div><div><label class="block text-xs font-semibold text-slate-700 mb-1">Current Delivery Location (Optional)</label><input id="current-location-input" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></div><button onclick="useCurrentGPS()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"><i data-lucide="navigation" class="w-4 h-4"></i> Use GPS</button><div class="flex gap-3"><button onclick="closeLocationModal()" class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-sm">Cancel</button><button onclick="saveCurrentLocation()" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 font-semibold text-sm">Confirm</button></div></div>
+    </div>
+</div>
