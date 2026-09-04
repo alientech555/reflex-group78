@@ -22,7 +22,7 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/claims', require('./routes/claims'));
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Reflex API & Socket Server running on port ${PORT}`));
