@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reflex — Last-Mile Logistics for Kenya</title>
+    <!-- Backend Integration Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/api.js"></script>
+    <script src="/socket-client.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -1299,6 +1304,33 @@ function approveReturnClaim(claimId){
 
 function showToast(message,iconName='check-circle'){const t=document.getElementById('toast'),i=document.getElementById('toast-icon'),m=document.getElementById('toast-message');m.textContent=message;i.setAttribute('data-lucide',iconName);t.classList.remove('hidden');lucide.createIcons();clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>t.classList.add('hidden'),3000);}
 document.addEventListener('keydown',(e)=>{if(e.key==='Escape'){closeAuthModal();closeNewOrderModal();closeQRModal();closeScanner();closeCartModal();closeLocationModal();closePodModal();closeApprovalModal();closeRiderOnboarding();closeEmailInbox();closeEmailDetail();closeRejectionModal();closeOrderDetail();closeReturnClaimModal();closeReturnVerifyModal();closeForgotPassword();closeAddItemModal();}});
+</script>
+
+<!-- FULL-STACK SYNC LAYER: Bridges localStorage UI to MongoDB Backend -->
+<script>
+const originalLoadState = window.loadState;
+const originalSaveState = window.saveState;
+
+window.loadState = async function() {
+    try {
+        const data = await window.api.fetchState();
+        state.users = data.users; state.orders = data.orders; state.products = data.products; state.claims = data.claims || [];
+        state.riders = data.users.filter(u => u.role === 'rider' && u.status === 'approved').map(u => ({
+            id: u.id, userId: u.id, name: u.name, phone: u.phone, status: 'available',
+            lat: u.lat || -1.2864, lng: u.lng || 36.8172, deliveries: u.deliveries || 0,
+            rating: u.rating || 5.0, earnings: u.earnings || 0, vehicle: u.vehicle || 'Motorcycle'
+        }));
+        const savedUser = localStorage.getItem('reflex_current_user_v7');
+        if(savedUser) currentUser = JSON.parse(savedUser);
+        if(currentUser) { switchPersona(currentUser.role); renderUserMenu(); renderNav(); updateEmailBadge(); } else { showAuthView(); }
+        renderProducts(); updateCartCount(); renderBuyerLocation(); renderBuyerOrders(); refreshApprovalBadge();
+    } catch(e) { console.error('Backend sync failed, falling back to localStorage', e); originalLoadState(); }
+};
+
+window.saveState = function() {
+    originalSaveState(); // Keep local UI reactivity
+    if(state.orders.length > 0) { window.api.syncOrder(state.orders[0]).catch(() => {}); }
+};
 </script>
 </body>
 </html>
